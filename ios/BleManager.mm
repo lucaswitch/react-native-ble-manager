@@ -1,5 +1,5 @@
 #import <BleManager.h>
-#import <RNBleManager-Swift.h>
+#import <RNBleManager/RNBleManager-Swift.h>
 
 @implementation SpecChecker
 
