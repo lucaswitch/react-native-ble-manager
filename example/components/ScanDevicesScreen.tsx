@@ -3,9 +3,9 @@
  */
 
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState, useEffect } from 'react';
 import {
-  SafeAreaView,
   StyleSheet,
   View,
   Text,
@@ -16,7 +16,6 @@ import {
   TouchableHighlight,
   Pressable,
 } from 'react-native';
-import { Colors } from 'react-native/Libraries/NewAppScreen';
 import BleManager, {
   BleDisconnectPeripheralEvent,
   BleManagerDidUpdateValueForCharacteristicEvent,
@@ -26,6 +25,9 @@ import BleManager, {
   Peripheral,
   PeripheralInfo,
 } from 'react-native-ble-manager';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { RootStackParamList } from '../types/navigation';
 
 const SECONDS_TO_SCAN_FOR = 3;
 const SERVICE_UUIDS: string[] = [];
@@ -40,7 +42,10 @@ declare module 'react-native-ble-manager' {
 }
 
 const ScanDevicesScreen = () => {
-  const navigation = useNavigation();
+  const navigation =
+    useNavigation<
+      NativeStackNavigationProp<RootStackParamList, 'ScanDevices'>
+    >();
 
   const [isScanning, setIsScanning] = useState(false);
   const [peripherals, setPeripherals] = useState(
@@ -57,7 +62,10 @@ const ScanDevicesScreen = () => {
       try {
         console.debug('[startScan] starting scan...');
         setIsScanning(true);
-        BleManager.scan(SERVICE_UUIDS, SECONDS_TO_SCAN_FOR, ALLOW_DUPLICATES, {
+        BleManager.scan({
+          serviceUUIDs: SERVICE_UUIDS,
+          seconds: SECONDS_TO_SCAN_FOR,
+          allowDuplicates: ALLOW_DUPLICATES,
           matchMode: BleScanMatchMode.Sticky,
           scanMode: BleScanMode.LowLatency,
           callbackType: BleScanCallbackType.AllMatches,
@@ -288,6 +296,23 @@ const ScanDevicesScreen = () => {
     }
   };
 
+  const removeAssociatedPeripherals = async () => {
+    try {
+      const associatedPeripherals = await BleManager.getAssociatedPeripherals();
+      for (const peripheral of associatedPeripherals) {
+        await BleManager.removeAssociatedPeripheral(peripheral.id);
+      }
+      console.debug(
+        '[removeAssociatedPeripherals] associated peripherals removed'
+      );
+    } catch (error) {
+      console.error(
+        '[removeAssociatedPeripherals] unable to remove associated peripherals.',
+        error
+      );
+    }
+  }
+
   const connectPeripheral = async (peripheral: Peripheral) => {
     try {
       if (peripheral) {
@@ -380,6 +405,15 @@ const ScanDevicesScreen = () => {
         `[connectPeripheral][${peripheral.id}] connectPeripheral error`,
         error
       );
+    }
+  };
+
+  const checkIsStarted = async () => {
+    try {
+      const isStarted = await BleManager.isStarted();
+      console.debug('[checkIsStarted] isStarted:', isStarted);
+    } catch (error) {
+      console.error('[checkIsStarted] error checking isStarted:', error);
     }
   };
 
@@ -487,7 +521,7 @@ const ScanDevicesScreen = () => {
   };
 
   const renderItem = ({ item }: { item: Peripheral }) => {
-    const backgroundColor = item.connected ? '#069400' : Colors.white;
+    const backgroundColor = item.connected ? '#069400' : 'white';
     return (
       <TouchableHighlight
         underlayColor="#0082FC"
@@ -522,9 +556,14 @@ const ScanDevicesScreen = () => {
               Retrieve connected peripherals
             </Text>
           </Pressable>
+        </View>
 
+        <View style={styles.buttonGroup}>
           <Pressable style={styles.scanButton} onPress={readCharacteristics}>
             <Text style={styles.scanButtonText}>Read characteristics</Text>
+          </Pressable>
+          <Pressable style={styles.scanButton} onPress={checkIsStarted}>
+            <Text style={styles.scanButtonText}>Check isStarted</Text>
           </Pressable>
         </View>
 
@@ -534,6 +573,7 @@ const ScanDevicesScreen = () => {
               <Pressable style={styles.scanButton} onPress={startCompanionScan}>
                 <Text style={styles.scanButtonText}>Scan Companion</Text>
               </Pressable>
+
               <Pressable
                 style={styles.scanButton}
                 onPress={getAssociatedPeripherals}
@@ -545,6 +585,14 @@ const ScanDevicesScreen = () => {
             </View>
 
             <View style={styles.buttonGroup}>
+              <Pressable
+                style={styles.scanButton}
+                onPress={removeAssociatedPeripherals}
+              >
+                <Text style={styles.scanButtonText}>
+                  Remove Associated Peripherals
+                </Text>
+              </Pressable>
               <Pressable style={styles.scanButton} onPress={enableBluetooth}>
                 <Text style={styles.scanButtonText}>Enable Bluetooth</Text>
               </Pressable>
@@ -592,7 +640,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 10,
     bottom: 0,
-    color: Colors.black,
+    color: 'black',
   },
   buttonGroup: {
     flexDirection: 'row',
@@ -604,7 +652,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     backgroundColor: '#0a398a',
-    margin: 10,
+    margin: 5,
     borderRadius: 12,
     flex: 1,
     ...boxShadow,
@@ -612,7 +660,7 @@ const styles = StyleSheet.create({
   scanButtonText: {
     fontSize: 16,
     letterSpacing: 0.25,
-    color: Colors.white,
+    color: 'white',
   },
   body: {
     backgroundColor: '#0082FC',
@@ -625,19 +673,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 24,
     fontWeight: '600',
-    color: Colors.black,
+    color: 'black',
   },
   sectionDescription: {
     marginTop: 8,
     fontSize: 18,
     fontWeight: '400',
-    color: Colors.dark,
+    color: 'dark',
   },
   highlight: {
     fontWeight: '700',
   },
   footer: {
-    color: Colors.dark,
+    color: 'dark',
     fontSize: 12,
     fontWeight: '600',
     padding: 4,
@@ -669,7 +717,7 @@ const styles = StyleSheet.create({
   noPeripherals: {
     margin: 10,
     textAlign: 'center',
-    color: Colors.white,
+    color: 'white',
   },
 });
 

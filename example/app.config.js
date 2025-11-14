@@ -1,4 +1,3 @@
-
 export default ({ config }) => {
   if (process.env.MY_ENVIRONMENT === 'production') {
     config.name = 'RN BLE Example';

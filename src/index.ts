@@ -441,6 +441,22 @@ class BleManager {
   }
 
   /**
+   * Check if the BLE manager has been started.
+   * @returns boolean promise indicating if the manager is started.
+   */
+  isStarted(): Promise<boolean> {
+    return new Promise((fulfill, reject) => {
+      BleManagerModule.isStarted((error: CallbackError, started: boolean) => {
+        if (error) {
+          reject(error);
+        } else {
+          fulfill(started);
+        }
+      });
+    });
+  }
+
+  /**
    *
    * @param serviceUUIDs
    * @param seconds amount of seconds to scan. if set to 0 or less, will scan until you call stopScan() or the OS stops the scan (background etc).
@@ -448,15 +464,16 @@ class BleManager {
    * @param scanningOptions optional map of properties to fine-tune scan behavior, see DOCS.
    * @returns
    */
-  scan(
-    serviceUUIDs: string[],
-    seconds: number,
-    allowDuplicates?: boolean,
-    scanningOptions: ScanOptions = {}
-  ) {
+  scan(scanningOptions: ScanOptions = {}) {
     return new Promise<void>((fulfill, reject) => {
-      if (allowDuplicates == null) {
-        allowDuplicates = false;
+      if (scanningOptions.serviceUUIDs == null) {
+        scanningOptions.serviceUUIDs = [];
+      }
+      if (scanningOptions.seconds == null) {
+        scanningOptions.seconds = 0;
+      }
+      if (scanningOptions.allowDuplicates == null) {
+        scanningOptions.allowDuplicates = false;
       }
 
       // (ANDROID) Match as many advertisement per filter as hw could allow
@@ -500,19 +517,13 @@ class BleManager {
         }
       }
 
-      BleManagerModule.scan(
-        serviceUUIDs,
-        seconds,
-        allowDuplicates,
-        scanningOptions,
-        (error: string | null) => {
-          if (error) {
-            reject(error);
-          } else {
-            fulfill();
-          }
+      BleManagerModule.scan(scanningOptions, (error: string | null) => {
+        if (error) {
+          reject(error);
+        } else {
+          fulfill();
         }
-      );
+      });
     });
   }
 
@@ -737,7 +748,7 @@ class BleManager {
       BleManagerModule.removeAssociatedPeripheral(
         peripheralId,
         (error: string | null) => {
-          if (error !== null) {
+          if (error) {
             reject(error);
           } else {
             fulfill();
@@ -831,35 +842,6 @@ class BleManager {
     });
   }
 
-  /**
-   * [iOS +18 only]
-   */
-  accessoriesScan(displayItems: IOSAccessoryDisplayItem[]): Promise<IOSAccessory[]> {
-    return BleManagerModule.accessoriesScan(displayItems);
-  }
-
-  /**
-   * [iOS +18 only]
-   */
-  getConnectedAccessories(): Promise<IOSAccessory[]> {
-    return BleManagerModule.getConnectedAccessories();
-  }
-
-  /**
-   * [iOS +18 only]
-   */
-  stopAccessoriesScan(): void {
-    return BleManagerModule.stopAccessoriesScan();
-  }
-
-  /**
-   * Reliable way to check if Apple AccessoryKit is supported on device.
-   * Supported on Android and iOS.
-   */
-  getAccessoryKitSupported(): boolean {
-    return BleManagerModule.getAccessoryKitSupported();
-  }
-
   onDiscoverPeripheral(callback: any): EventSubscription {
     return BleManagerModule.onDiscoverPeripheral(callback);
   }
@@ -906,22 +888,6 @@ class BleManager {
 
   onCompanionAvailability(callback: any): EventSubscription {
     return BleManagerModule.onCompanionAvailability(callback);
-  }
-
-  onStartScanAccessories(callback: (event: EventStartScanAccessories) => any): EventSubscription {
-    return BleManagerModule.onStartScanAccessories(callback);
-  }
-
-  onStopScanAccessories(callback: (event: EventStopScanAccessories) => any): EventSubscription {
-    return BleManagerModule.onStopScanAccessories(callback);
-  }
-
-  onAccessoriesChanged(callback: (event: EventAccessoriesChanged) => any): EventSubscription {
-    return BleManagerModule.onAccessoriesChanged(callback);
-  }
-
-  onAccessorySessionUpdateState(callback: (event: EventAccessorySessionUpdateState) => any): EventSubscription {
-    return BleManagerModule.onAccessorySessionUpdateState(callback);
   }
 }
 

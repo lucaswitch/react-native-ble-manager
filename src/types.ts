@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 import { EventAccessorySessionUpdateStateRaw } from './NativeBleManager';
 
+=======
+>>>>>>> origin/master
 /**
  * android states: https://developer.android.com/reference/android/bluetooth/BluetoothAdapter#EXTRA_STATE
  * ios states: https://developer.apple.com/documentation/corebluetooth/cbcentralmanagerstate
@@ -96,6 +99,15 @@ export interface ConnectOptions {
  * https://developer.android.com/reference/android/bluetooth/le/ScanSettings
  */
 export interface ScanOptions {
+<<<<<<< HEAD
+=======
+  serviceUUIDs?: string[];
+  seconds?: number;
+  /**
+   *  iOS only: whether to allow duplicate peripheral during a scan
+   */
+  allowDuplicates?: boolean;
+>>>>>>> origin/master
   /**
    * This will only works if a ScanFilter is active. Otherwise, may not retrieve any result.
    * See https://developer.android.com/reference/android/bluetooth/le/ScanSettings#MATCH_NUM_FEW_ADVERTISEMENT.
@@ -160,6 +172,13 @@ export interface ScanOptions {
    */
   single?: boolean;
   companion?: boolean;
+<<<<<<< HEAD
+=======
+  /**
+   * [Android O+] Deliver scan results using a PendingIntent instead of the default callback.
+   */
+  useScanIntent?: boolean;
+>>>>>>> origin/master
 }
 
 export interface CompanionScanOptions {
@@ -398,6 +417,7 @@ export type BleManagerCompanionFailure = { error: string };
  * Null if the request was cancelled by the user.
  */
 export type BleManagerCompanionPeripheral = Peripheral | null;
+<<<<<<< HEAD
 
 export enum IOSAccessoryKitSessionState {
   Activated = "activated",
@@ -419,3 +439,5 @@ export enum IOSAccessoryKitSessionState {
 export type EventAccessorySessionUpdateState = EventAccessorySessionUpdateStateRaw & {"state": IOSAccessoryKitSessionState }
 
 
+=======
+>>>>>>> origin/master

@@ -1,4 +1,4 @@
-// @ts-ignore
+// oxlint-disable no-wrapper-object-types
 import { TurboModule, TurboModuleRegistry } from 'react-native';
 // @ts-ignore Ignore since it comes from codegen types.
 import type { EventEmitter } from 'react-native/Libraries/Types/CodegenTypes';
@@ -13,13 +13,9 @@ import type { EventEmitter } from 'react-native/Libraries/Types/CodegenTypes';
 export interface Spec extends TurboModule {
   start(options: Object, callback: (error: CallbackError) => void): void;
 
-  scan(
-    serviceUUIDStrings: string[],
-    timeoutSeconds: number,
-    allowDuplicates: boolean,
-    scanningOptions: Object,
-    callback: (error: CallbackError) => void
-  ): void;
+  isStarted(callback: (error: CallbackError, started: boolean) => void): void;
+
+  scan(scanningOptions: Object, callback: (error: CallbackError) => void): void;
 
   stopScan(callback: (error: CallbackError) => void): void;
 
@@ -43,7 +39,7 @@ export interface Spec extends TurboModule {
 
   readRSSI(
     peripheralUUID: string,
-    callback: (error: string | null, rssi: number) => void
+    callback: (error: CallbackError, rssi: number) => void
   ): void;
 
   readDescriptor(
@@ -51,7 +47,7 @@ export interface Spec extends TurboModule {
     serviceUUID: string,
     characteristicUUID: string,
     descriptorUUID: string,
-    callback: (error: string | null, data: number[]) => void
+    callback: (error: CallbackError, data: number[]) => void
   ): void;
 
   writeDescriptor(
@@ -59,12 +55,12 @@ export interface Spec extends TurboModule {
     serviceUUID: string,
     characteristicUUID: string,
     descriptorUUID: string,
-    data: object[],
-    callback: (error: string | null) => void
+    data: Object[],
+    callback: (error: CallbackError) => void
   ): void;
 
   getDiscoveredPeripherals(
-    callback: (error: string | null, result: Peripheral[] | null) => void
+    callback: (error: CallbackError, result: Peripheral[] | null) => void
   ): void;
 
   checkState(callback: (state: BleState) => void): void;
@@ -73,26 +69,26 @@ export interface Spec extends TurboModule {
     peripheralUUID: string,
     serviceUUID: string,
     characteristicUUID: string,
-    message: object[],
+    message: Object[],
     maxByteSize: number,
-    callback: (error: string | null) => void
+    callback: (error: CallbackError) => void
   ): void;
 
   writeWithoutResponse(
     peripheralUUID: string,
     serviceUUID: string,
     characteristicUUID: string,
-    message: object[],
+    message: Object[],
     maxByteSize: number,
     queueSleepTime: number,
-    callback: (error: string | null) => void
+    callback: (error: CallbackError) => void
   ): void;
 
   read(
     peripheralUUID: string,
     serviceUUID: string,
     characteristicUUID: string,
-    callback: (error: string | null, data: number[]) => void
+    callback: (error: CallbackError, data: number[]) => void
   ): void;
 
   startNotificationWithBuffer(
@@ -100,26 +96,26 @@ export interface Spec extends TurboModule {
     serviceUUID: string,
     characteristicUUID: string,
     bufferLength: number,
-    callback: (error: string | null) => void
+    callback: (error: CallbackError) => void
   ): void;
 
   startNotification(
     peripheralUUID: string,
     serviceUUID: string,
     characteristicUUID: string,
-    callback: (error: string | null) => void
+    callback: (error: CallbackError) => void
   ): void;
 
   stopNotification(
     peripheralUUID: string,
     serviceUUID: string,
     characteristicUUID: string,
-    callback: (error: string | null) => void
+    callback: (error: CallbackError) => void
   ): void;
 
   getConnectedPeripherals(
     serviceUUIDStrings: string[],
-    callback: (error: string | null, result: Peripheral[] | null) => void
+    callback: (error: CallbackError, result: Peripheral[] | null) => void
   ): void;
 
   isPeripheralConnected(
@@ -127,66 +123,66 @@ export interface Spec extends TurboModule {
     callback: (error: Peripheral[]) => void
   ): void;
 
-  isScanning(callback: (error: string | null, status: boolean) => void): void;
+  isScanning(callback: (error: CallbackError, status: boolean) => void): void;
 
   getMaximumWriteValueLengthForWithoutResponse(
     peripheralUUID: string,
-    callback: (error: string | null, max: number) => void
+    callback: (error: CallbackError, max: number) => void
   ): void;
 
   getMaximumWriteValueLengthForWithResponse(
     deviceUUID: string,
-    callback: (error: string | null, max: number) => void
+    callback: (error: CallbackError, max: number) => void
   ): void;
 
-  enableBluetooth(callback: (error: string | null) => void): void;
+  enableBluetooth(callback: (error: CallbackError) => void): void;
 
   getBondedPeripherals(
-    callback: (error: string | null, result: Peripheral[] | null) => void
+    callback: (error: CallbackError, result: Peripheral[] | null) => void
   ): void;
 
   createBond(
     peripheralUUID: string,
     devicePin: string,
-    callback: (error: string | null) => void
+    callback: (error: CallbackError) => void
   ): void;
 
   removeBond(
     peripheralUUID: string,
-    callback: (error: string | null) => void
+    callback: (error: CallbackError) => void
   ): void;
 
   removePeripheral(
     peripheralUUID: string,
-    callback: (error: string | null) => void
+    callback: (error: CallbackError) => void
   ): void;
 
   requestMTU(
     peripheralUUID: string,
     mtu: number,
-    callback: (error: string | null, mtu: number) => void
+    callback: (error: CallbackError, mtu: number) => void
   ): void;
 
   requestConnectionPriority(
     peripheralUUID: string,
     connectionPriority: number,
-    callback: (error: string | null, status: boolean) => void
+    callback: (error: CallbackError, status: boolean) => void
   ): void;
 
   refreshCache(
     peripheralUUID: string,
-    callback: (error: string | null, result: boolean) => void
+    callback: (error: CallbackError, result: boolean) => void
   ): void;
 
   setName(name: string): void;
 
   getAssociatedPeripherals(
-    callback: (error: string | null, peripherals: Peripheral[] | null) => void
+    callback: (error: CallbackError, peripherals: Peripheral[] | null) => void
   ): void;
 
   removeAssociatedPeripheral(
     peripheralUUID: string,
-    callback: (error: string | null) => void
+    callback: (error: CallbackError) => void
   ): void;
 
   supportsCompanion(callback: (supports: boolean) => void): void;
@@ -194,16 +190,8 @@ export interface Spec extends TurboModule {
   companionScan(
     serviceUUIDs: string[],
     option: Object,
-    callback: (error: string | null, peripheral: Peripheral | null) => void
+    callback: (error: CallbackError, peripheral: Peripheral | null) => void
   ): void;
-
-  accessoriesScan(displayItems: IOSAccessoryDisplayItem[]): Promise<IOSAccessory[]>
-
-  getConnectedAccessories(): Promise<IOSAccessory[]>
-
-  stopAccessoriesScan(): void
-
-  getAccessoryKitSupported(): boolean
 
   /**
    * Supported events.
@@ -219,10 +207,6 @@ export interface Spec extends TurboModule {
   readonly onDidUpdateNotificationStateFor: EventEmitter<EventDidUpdateNotificationStateFor>;
   readonly onCompanionPeripheral: EventEmitter<EventCompanionPeripheral>;
   readonly onCompanionFailure: EventEmitter<EventCompanionFailure>;
-  readonly onStartScanAccessories: EventEmitter<EventStartScanAccessories>;
-  readonly onStopScanAccessories: EventEmitter<EventStopScanAccessories>;
-  readonly onAccessoriesChanged: EventEmitter<EventAccessoriesChanged>;
-  readonly onAccessorySessionUpdateState: EventEmitter<EventAccessorySessionUpdateStateRaw>;
 }
 
 export default TurboModuleRegistry.get<Spec>('BleManager') as Spec;
@@ -245,30 +229,16 @@ export type Peripheral = {
   advertising: {
     isConnectable?: boolean;
     localName?: string | null;
-    rawData?: {
-      CDVType: number[];
-      bytes: number[];
-      data: string;
-    };
+    rawData?: { CDVType: number[]; bytes: number[]; data: string };
     manufacturerData?:
-      | {
-          CDVType: number[];
-          bytes: number[];
-          data: string;
-        }[]
+      | { CDVType: number[]; bytes: number[]; data: string }[]
       | null;
     manufacturerRawData?: {
       CDVType: number[];
       bytes: number[];
       data: string;
     } | null;
-    serviceData?:
-      | {
-          CDVType: number[];
-          bytes: number[];
-          data: string;
-        }[]
-      | null;
+    serviceData?: { CDVType: number[]; bytes: number[]; data: string }[] | null;
     serviceUUIDs?: string[];
     txPowerLevel?: number;
   };
@@ -281,30 +251,16 @@ export type PeripheralInfo = {
   advertising: {
     isConnectable?: boolean;
     localName?: string | null;
-    rawData?: {
-      CDVType: number[];
-      bytes: number[];
-      data: string;
-    } | null;
+    rawData?: { CDVType: number[]; bytes: number[]; data: string } | null;
     manufacturerData?:
-      | {
-          CDVType: number[];
-          bytes: number[];
-          data: string;
-        }[]
+      | { CDVType: number[]; bytes: number[]; data: string }[]
       | null;
     manufacturerRawData?: {
       CDVType: number[];
       bytes: number[];
       data: string;
     } | null;
-    serviceData?:
-      | {
-          CDVType: number[];
-          bytes: number[];
-          data: string;
-        }[]
-      | null;
+    serviceData?: { CDVType: number[]; bytes: number[]; data: string }[] | null;
     serviceUUIDs?: string[];
     txPowerLevel?: number;
   };
@@ -324,20 +280,27 @@ export type PeripheralInfo = {
     };
     characteristic: string;
     service: string;
-    descriptors?: {
-      value: string;
-      uuid: string;
-    }[];
+    descriptors?: { value: string; uuid: string }[];
   }[];
   services?: { uuid: string }[];
 };
 
-export type EventStopScan = {
-  status: number;
-};
+export type EventStopScan = { status: number };
 
-export type EventDidUpdateState = {
-  state: string;
+export type EventDidUpdateState = { state: string };
+
+export type EventDiscoverPeripheral = {
+  id: string;
+  name: string;
+  rssi: number;
+  advertising: {
+    isConnectable: boolean;
+    serviceUUIDs: string[];
+    manufacturerData: number[];
+    serviceData: number[];
+    txPowerLevel: number;
+    rawData?: number | null;
+  };
 };
 
 export type EventDidUpdateValueForCharacteristic = {

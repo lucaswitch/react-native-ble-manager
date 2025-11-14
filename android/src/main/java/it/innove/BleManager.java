@@ -41,7 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-class BleManager extends NativeBleManagerSpec {
+public class BleManager extends NativeBleManagerSpec {
 
     public static final String LOG_TAG = "RNBleManager";
     private static final int ENABLE_REQUEST = 539;
@@ -311,7 +311,6 @@ class BleManager extends NativeBleManagerSpec {
     }
 
     @ReactMethod
-    public void scan(ReadableArray serviceUUIDs, double timeoutSeconds, boolean allowDuplicates, ReadableMap scanningOptions,
                      Callback callback) {
         Log.d(LOG_TAG, "scan");
         if (getBluetoothAdapter() == null) {
@@ -334,7 +333,7 @@ class BleManager extends NativeBleManagerSpec {
         }
 
         if (scanManager != null)
-            scanManager.scan(serviceUUIDs, (int) timeoutSeconds, scanningOptions, callback);
+            scanManager.scan(scanningOptions, callback);
     }
 
     @SuppressLint("NewApi") // NOTE: constructor checks the API version.
@@ -449,7 +448,7 @@ class BleManager extends NativeBleManagerSpec {
 
     @ReactMethod
     public void startNotificationWithBuffer(String deviceUUID, String serviceUUID, String characteristicUUID,
-                                           double bufferLength, Callback callback) {
+                                            double bufferLength, Callback callback) {
         Log.d(LOG_TAG, "startNotification");
         if (serviceUUID == null || characteristicUUID == null) {
             callback.invoke("ServiceUUID and characteristicUUID required.");
