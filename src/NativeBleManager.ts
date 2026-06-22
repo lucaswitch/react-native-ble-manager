@@ -11,6 +11,14 @@ import type { EventEmitter } from 'react-native/Libraries/Types/CodegenTypes';
  *  - Knowing that also every type needs to match the current Objective C++ and Java callbacks types and callbacks type definitions and be aware of the current differences between implementation in both platforms.
  */
 export interface Spec extends TurboModule {
+  getConstants(): {
+    /**
+     * Whether AccessoryKit (AccessorySetupKit) is available on this device.
+     * Constant for the lifetime of the app.
+     */
+    ACCESSORY_KIT_SUPPORTED: boolean;
+  };
+
   start(options: Object, callback: (error: CallbackError) => void): void;
 
   isStarted(callback: (error: CallbackError, started: boolean) => void): void;
@@ -193,6 +201,18 @@ export interface Spec extends TurboModule {
     callback: (error: CallbackError, peripheral: Peripheral | null) => void
   ): void;
 
+  getPairedAccessories(): Promise<IOSAccessory[]>;
+
+  accessoriesScan(
+    displayItems: IOSAccessoryDisplayItem[]
+  ): Promise<IOSAccessory[]>;
+
+  stopAccessoriesScan(): void;
+
+  removeAccessory(id: string): Promise<void>;
+
+  renameAccessory(id: string): Promise<void>;
+
   /**
    * Supported events.
    */
@@ -207,6 +227,10 @@ export interface Spec extends TurboModule {
   readonly onDidUpdateNotificationStateFor: EventEmitter<EventDidUpdateNotificationStateFor>;
   readonly onCompanionPeripheral: EventEmitter<EventCompanionPeripheral>;
   readonly onCompanionFailure: EventEmitter<EventCompanionFailure>;
+  readonly onStartScanAccessories: EventEmitter<EventStartScanAccessories>;
+  readonly onStopScanAccessories: EventEmitter<EventStopScanAccessories>;
+  readonly onAccessoriesChanged: EventEmitter<EventAccessoriesChanged>;
+  readonly onAccessorySessionUpdateState: EventEmitter<EventAccessorySessionUpdateState>;
 }
 
 export default TurboModuleRegistry.get<Spec>('BleManager') as Spec;
@@ -375,3 +399,39 @@ export type EventCompanionPeripheral = {
 };
 
 export type EventCompanionFailure = { error: string };
+
+/**
+ * An accessory display item passed to `accessoriesScan` describing a device
+ * the AccessoryKit picker is allowed to surface.
+ */
+export type IOSAccessoryDisplayItem = {
+  name: string;
+  productImage: string;
+  serviceUUID: string;
+  /**
+   * Picker setup options. Allowed values: "rename", "confirmAuthorization".
+   */
+  setupOptions?: string[];
+};
+
+/**
+ * An accessory returned by AccessoryKit.
+ */
+export type IOSAccessory = {
+  id: string;
+  name: string;
+  state: number;
+  serviceUUID: string;
+};
+
+export type EventStartScanAccessories = {};
+
+export type EventStopScanAccessories = {};
+
+export type EventAccessoriesChanged = {
+  accessories: IOSAccessory[];
+};
+
+export type EventAccessorySessionUpdateState = {
+  state: number;
+};

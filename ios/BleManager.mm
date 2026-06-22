@@ -35,6 +35,10 @@
 
 RCT_EXPORT_MODULE()
 
++ (BOOL)requiresMainQueueSetup {
+    return NO;
+}
+
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
     (const facebook::react::ObjCTurboModule::InitParams &)params {
     return std::make_shared<facebook::react::NativeBleManagerSpecJSI>(params);
@@ -49,6 +53,50 @@ RCT_EXPORT_MODULE()
              callback:(RCTResponseSenderBlock)callback {
     [_swBleManager companionScan:serviceUUIDs option:option callback:callback];
 }
+
+- (void)accessoriesScan:(NSArray *)displayItems
+                resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject {
+    [_swBleManager accessoriesScan:displayItems resolve:resolve reject:reject];
+}
+
+- (void)getPairedAccessories:(RCTPromiseResolveBlock)resolve
+                         reject:(RCTPromiseRejectBlock)reject {
+    [_swBleManager getPairedAccessories:resolve reject:reject];
+}
+
+- (void)stopAccessoriesScan {
+    [_swBleManager stopAccessoriesScan];
+}
+
+- (void)removeAccessory:(NSString *)identifier
+                resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject {
+    [_swBleManager removeAccessory:identifier resolve:resolve reject:reject];
+}
+
+- (void)renameAccessory:(NSString *)identifier
+                resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject {
+    [_swBleManager renameAccessory:identifier resolve:resolve reject:reject];
+}
+
+#ifdef RCT_NEW_ARCH_ENABLED
+- (facebook::react::ModuleConstants<JS::NativeBleManager::Constants::Builder>)constantsToExport {
+    return [self getConstants];
+}
+
+- (facebook::react::ModuleConstants<JS::NativeBleManager::Constants::Builder>)getConstants {
+    return (facebook::react::ModuleConstants<JS::NativeBleManager::Constants::Builder>)
+        facebook::react::typedConstants<JS::NativeBleManager::Constants>({
+            .ACCESSORY_KIT_SUPPORTED = static_cast<bool>([_swBleManager getAccessoryKitSupported]),
+        });
+}
+#else
+- (NSDictionary *)constantsToExport {
+    return @{@"ACCESSORY_KIT_SUPPORTED": @([_swBleManager getAccessoryKitSupported])};
+}
+#endif
 
 - (void)connect:(NSString *)peripheralUUID
         options:(NSDictionary *)options

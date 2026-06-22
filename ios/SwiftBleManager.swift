@@ -1,5 +1,9 @@
 import CoreBluetooth
 import Foundation
+#if canImport(AccessorySetupKit)
+import AccessorySetupKit
+import UIKit
+#endif
 
 @objc
 public class SwiftBleManager: NSObject, CBCentralManagerDelegate,
@@ -7,6 +11,8 @@ public class SwiftBleManager: NSObject, CBCentralManagerDelegate,
 {
     static var shared: SwiftBleManager?
     static var sharedManager: CBCentralManager?
+
+    private var session: Any?
 
     private weak var bleManager: BleManager?
     private var manager: CBCentralManager?
@@ -2041,5 +2047,328 @@ public class SwiftBleManager: NSObject, CBCentralManagerDelegate,
         callback: RCTResponseSenderBlock
     ) {
         callback(["Not supported"])
+    }
+
+    #if canImport(AccessorySetupKit)
+    @available(iOS 18.0, *)
+    private func createJsAccessory(_ accessory: ASAccessory) -> [String: Any]? {
+        guard
+            let serviceUUID = accessory.descriptor.bluetoothServiceUUID?.uuidString,
+            let id = accessory.bluetoothIdentifier?.uuidString
+        else {
+            return nil
+        }
+        return [
+            "id": id,
+            "name": accessory.displayName,
+            "state": NSNumber(value: accessory.state.rawValue),
+            "serviceUUID": serviceUUID,
+        ]
+    }
+
+    private struct AccessoryKitSetupError: LocalizedError {
+        let code: String
+        let message: String
+        var errorDescription: String? { message }
+    }
+
+    /// Validate that the AccessoryKit `Info.plist` entries are present and cover
+    /// the requested `displayItems`.
+    ///
+    /// Throws `AccessoryKitSetupError` with an English message that describes
+    /// both what the plist must declare and what the call actually sent, then
+    /// returns the configured names and services.
+    private func validateAccessoryKitInfoPlist(
+        _ displayItems: [[String: Any]]
+    ) throws -> (names: [String], services: [String]) {
+        let sentNames = displayItems.compactMap { $0["name"] as? String }
+        let sentServices = displayItems.compactMap { $0["serviceUUID"] as? String }
+
+        if Bundle.main.object(forInfoDictionaryKey: "NSAccessorySetupKitSupports") == nil {
+            throw AccessoryKitSetupError(
+                code: "INCORRECT_ACCESSORY_KIT_SETUP",
+                message: "Missing key \"NSAccessorySetupKitSupports\" in the app Info.plist. It must be an array of the wireless technologies AccessorySetupKit uses, e.g. [\"Bluetooth\"]. See: https://developer.apple.com/documentation/bundleresources/information-property-list/nsaccessorysetupkitsupports"
+            )
+        }
+
+        let rawNames = Bundle.main.object(forInfoDictionaryKey: "NSAccessorySetupBluetoothNames")
+        guard let names = rawNames as? [String] else {
+            throw AccessoryKitSetupError(
+                code: "INCORRECT_ACCESSORY_KIT_SETUP",
+                message: "Missing or invalid key \"NSAccessorySetupBluetoothNames\" in the app Info.plist. It must be an array of strings declaring every accessory name you scan for. Expected to contain the sent names \(sentNames), but found \(String(describing: rawNames)). See: https://developer.apple.com/documentation/bundleresources/information-property-list/nsaccessorysetupbluetoothnames"
+            )
+        }
+
+        let rawServices = Bundle.main.object(forInfoDictionaryKey: "NSAccessorySetupBluetoothServices")
+        guard let services = rawServices as? [String] else {
+            throw AccessoryKitSetupError(
+                code: "INCORRECT_ACCESSORY_KIT_SETUP",
+                message: "Missing or invalid key \"NSAccessorySetupBluetoothServices\" in the app Info.plist. It must be an array of strings declaring every service UUID you scan for. Expected to contain the sent services \(sentServices), but found \(String(describing: rawServices)). See: https://developer.apple.com/documentation/bundleresources/information-property-list/nsaccessorysetupbluetoothservices"
+            )
+        }
+
+        return (names, services)
+    }
+
+    @available(iOS 18.0, *)
+    private func performAccessoriesScan(
+        _ displayItems: [[String: Any]],
+        resolve: @escaping RCTPromiseResolveBlock,
+        reject: @escaping RCTPromiseRejectBlock
+    ) {
+        self.stopAccessoriesScan()
+
+        if displayItems.isEmpty {
+            reject("INVALID_DISPLAY_ITEMS", "You should provide at least one accessory scan display item.", nil)
+            return
+        }
+
+        let names: [String]
+        let pListServices: [String]
+        do {
+            (names, pListServices) = try validateAccessoryKitInfoPlist(displayItems)
+        } catch let error as AccessoryKitSetupError {
+            reject(error.code, error.errorDescription, error)
+            return
+        } catch {
+            reject("INCORRECT_ACCESSORY_KIT_SETUP", error.localizedDescription, error)
+            return
+        }
+
+        var items: [ASPickerDisplayItem] = []
+        for d in displayItems {
+            guard let name = d["name"] as? String, !name.isEmpty else {
+                reject("INVALID_DISPLAY_ITEM_NAME", "One of display items does not contain a valid \"name\"", nil)
+                return
+            }
+            if !names.contains(name) {
+                reject("INVALID_DISPLAY_ITEM_NAME", "The sent name \"\(name)\" is not declared in the app Info.plist key NSAccessorySetupBluetoothNames. Allowed names: \(names). See: https://developer.apple.com/documentation/bundleresources/information-property-list/nsaccessorysetupbluetoothnames", nil)
+                return
+            }
+            guard let serviceUUID = d["serviceUUID"] as? String, !serviceUUID.isEmpty else {
+                reject("INVALID_SERVICE_UUID", "One of display items does not contain a valid \"serviceUUID\"", nil)
+                return
+            }
+            if !pListServices.contains(serviceUUID) {
+                reject("INVALID_SERVICE_UUID", "The sent serviceUUID \"\(serviceUUID)\" is not declared in the app Info.plist key NSAccessorySetupBluetoothServices. Allowed services: \(pListServices). See: https://developer.apple.com/documentation/bundleresources/information-property-list/nsaccessorysetupbluetoothservices", nil)
+                return
+            }
+            guard let productImageName = d["productImage"] as? String, !productImageName.isEmpty else {
+                reject("INVALID_PRODUCT_IMAGE", "One of display items does not contain a valid \"productImage\"", nil)
+                return
+            }
+            guard let productImage = UIImage(named: productImageName) else {
+                reject("INVALID_PRODUCT_IMAGE", "Could not find an iOS productImage with the name \"\(productImageName)\".", nil)
+                return
+            }
+
+            let descriptor = ASDiscoveryDescriptor()
+            descriptor.bluetoothServiceUUID = CBUUID(string: serviceUUID)
+            descriptor.bluetoothNameSubstring = name
+
+            let item = ASPickerDisplayItem(
+                name: name,
+                productImage: productImage,
+                descriptor: descriptor
+            )
+            if let rawSetupOptions = d["setupOptions"] as? [String] {
+                var setupOptions: ASPickerDisplayItem.SetupOptions = []
+                if rawSetupOptions.contains("rename") {
+                    setupOptions.insert(.rename)
+                }
+                if rawSetupOptions.contains("confirmAuthorization") {
+                    setupOptions.insert(.confirmAuthorization)
+                }
+                item.setupOptions = setupOptions
+            }
+            items.append(item)
+        }
+
+        func toArray(_ map: [UUID: ASAccessory]) -> [[String: Any]] {
+            return map.values.compactMap { self.createJsAccessory($0) }
+        }
+
+        var map = [UUID: ASAccessory]()
+        let session = ASAccessorySession()
+        session.activate(on: DispatchQueue.main) { [weak self, weak session] event in
+            guard let self, let session else { return }
+
+            switch event.eventType {
+            case .activated:
+                session.showPicker(for: items) { [weak self, weak session] error in
+                    guard let self, let session else { return }
+                    if let error = error as NSError? {
+                        session.invalidate()
+                        reject("COULD_NOT_SHOW_PICKER", error.localizedDescription, error)
+                    } else {
+                        self.bleManager?.emit(onStartScanAccessories: [:])
+                        resolve(session.accessories.compactMap { self.createJsAccessory($0) })
+                    }
+                }
+
+            case .invalidated:
+                self.bleManager?.emit(onStopScanAccessories: [:])
+
+            case .accessoryAdded, .accessoryChanged:
+                if let accessory = event.accessory, let uuid = accessory.bluetoothIdentifier {
+                    map[uuid] = accessory
+                    self.bleManager?.emit(onAccessoriesChanged: ["accessories": toArray(map)])
+                }
+
+            case .accessoryRemoved:
+                if let accessory = event.accessory, let uuid = accessory.bluetoothIdentifier {
+                    map.removeValue(forKey: uuid)
+                    self.bleManager?.emit(onAccessoriesChanged: ["accessories": toArray(map)])
+                }
+
+            default:
+                self.bleManager?.emit(onAccessorySessionUpdateState: ["state": NSNumber(value: event.eventType.rawValue)])
+            }
+        }
+        self.session = session
+    }
+
+    @available(iOS 18.0, *)
+    private func performOnAccessory(
+        _ id: String,
+        reject: @escaping RCTPromiseRejectBlock,
+        action: @escaping (ASAccessorySession, ASAccessory) -> Void
+    ) {
+        self.stopAccessoriesScan()
+        let session = ASAccessorySession()
+        session.activate(on: DispatchQueue.main) { [weak self, weak session] event in
+            guard let self, let session else { return }
+            guard event.eventType == .activated else { return }
+            guard let accessory = session.accessories.first(where: {
+                $0.bluetoothIdentifier?.uuidString == id
+            }) else {
+                session.invalidate()
+                self.session = nil
+                reject("ACCESSORY_NOT_FOUND", "No paired accessory found with id \"\(id)\".", nil)
+                return
+            }
+            action(session, accessory)
+        }
+        self.session = session
+    }
+    #endif
+
+    /// Present the AccessoryKit picker to discover and pair accessories.
+    ///
+    /// Rejects with `NOT_SUPPORTED` on iOS versions prior to 18.
+    @objc public func accessoriesScan(
+        _ displayItems: [[String: Any]],
+        resolve: @escaping RCTPromiseResolveBlock,
+        reject: @escaping RCTPromiseRejectBlock
+    ) {
+        #if canImport(AccessorySetupKit)
+        if #available(iOS 18.0, *) {
+            performAccessoriesScan(displayItems, resolve: resolve, reject: reject)
+            return
+        }
+        #endif
+        reject("NOT_SUPPORTED", "requires iOS 18.0 or newer.", nil)
+    }
+
+    /// Retrieve the accessories already paired with the app through AccessoryKit.
+    @objc public func getPairedAccessories(
+        _ resolve: @escaping RCTPromiseResolveBlock,
+        reject: @escaping RCTPromiseRejectBlock
+    ) {
+        #if canImport(AccessorySetupKit)
+        if #available(iOS 18.0, *) {
+            self.stopAccessoriesScan()
+            let session = ASAccessorySession()
+            session.activate(on: DispatchQueue.main) { [weak self, weak session] event in
+                guard let self, let session else { return }
+                guard event.eventType == .activated else { return }
+                let accessories = session.accessories.compactMap { self.createJsAccessory($0) }
+                session.invalidate()
+                self.session = nil
+                resolve(accessories)
+            }
+            self.session = session
+            return
+        }
+        #endif
+        reject("NOT_SUPPORTED", "requires iOS 18.0 or newer.", nil)
+    }
+
+    /// Remove (forget) a paired accessory, deleting its BLE bond.
+    ///
+    /// Rejects with `NOT_SUPPORTED` on iOS versions prior to 18, or
+    /// `ACCESSORY_NOT_FOUND` when no paired accessory matches the id.
+    @objc public func removeAccessory(
+        _ id: String,
+        resolve: @escaping RCTPromiseResolveBlock,
+        reject: @escaping RCTPromiseRejectBlock
+    ) {
+        #if canImport(AccessorySetupKit)
+        if #available(iOS 18.0, *) {
+            performOnAccessory(id, reject: reject) { session, accessory in
+                session.removeAccessory(accessory) { [weak self] error in
+                    session.invalidate()
+                    self?.session = nil
+                    if let error = error as NSError? {
+                        reject("COULD_NOT_REMOVE_ACCESSORY", error.localizedDescription, error)
+                    } else {
+                        resolve(nil)
+                    }
+                }
+            }
+            return
+        }
+        #endif
+        reject("NOT_SUPPORTED", "requires iOS 18.0 or newer.", nil)
+    }
+
+    /// Present the system sheet to rename a paired accessory.
+    ///
+    /// Rejects with `NOT_SUPPORTED` on iOS versions prior to 18, or
+    /// `ACCESSORY_NOT_FOUND` when no paired accessory matches the id.
+    @objc public func renameAccessory(
+        _ id: String,
+        resolve: @escaping RCTPromiseResolveBlock,
+        reject: @escaping RCTPromiseRejectBlock
+    ) {
+        #if canImport(AccessorySetupKit)
+        if #available(iOS 18.0, *) {
+            performOnAccessory(id, reject: reject) { session, accessory in
+                session.renameAccessory(accessory, options: []) { [weak self] error in
+                    session.invalidate()
+                    self?.session = nil
+                    if let error = error as NSError? {
+                        reject("COULD_NOT_RENAME_ACCESSORY", error.localizedDescription, error)
+                    } else {
+                        resolve(nil)
+                    }
+                }
+            }
+            return
+        }
+        #endif
+        reject("NOT_SUPPORTED", "requires iOS 18.0 or newer.", nil)
+    }
+
+    /// Stop an in-progress AccessoryKit session. Safe to call when no session is active.
+    @objc public func stopAccessoriesScan() {
+        #if canImport(AccessorySetupKit)
+        if #available(iOS 18.0, *) {
+            if let session = self.session as? ASAccessorySession {
+                session.invalidate()
+                self.session = nil
+            }
+        }
+        #endif
+    }
+
+    /// Whether AccessoryKit (AccessorySetupKit) is available on this device.
+    @objc public func getAccessoryKitSupported() -> Bool {
+        #if canImport(AccessorySetupKit)
+        if #available(iOS 18.0, *) {
+            return true
+        }
+        #endif
+        return false
     }
 }

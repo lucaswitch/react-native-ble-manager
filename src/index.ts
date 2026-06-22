@@ -24,8 +24,24 @@ import {
   BleManagerDidUpdateNotificationStateForEvent,
   BleManagerCompanionPeripheral,
 } from './types';
-import { CallbackError } from './NativeBleManager';
+import {
+  CallbackError,
+  IOSAccessory,
+  IOSAccessoryDisplayItem,
+  EventStartScanAccessories,
+  EventStopScanAccessories,
+  EventAccessoriesChanged,
+  EventAccessorySessionUpdateState,
+} from './NativeBleManager';
 export * from './types';
+export type {
+  IOSAccessory,
+  IOSAccessoryDisplayItem,
+  EventStartScanAccessories,
+  EventStopScanAccessories,
+  EventAccessoriesChanged,
+  EventAccessorySessionUpdateState,
+} from './NativeBleManager';
 
 // @ts-expect-error This applies the turbo module version only when turbo is enabled for backwards compatibility.
 const isTurboModuleEnabled = global?.__turboModuleProxy != null;
@@ -1023,6 +1039,121 @@ class BleManager {
    */
   onCompanionPeripheral(callback: EventCallback<BleManagerCompanionPeripheral>): EventSubscription {
     return BleManagerModule.onCompanionPeripheral(callback);
+  }
+
+  /**
+   * [iOS only, 18+]
+   *
+   * Whether AccessoryKit (AccessorySetupKit) is available on this device.
+   *
+   * Native constant — `false` on Android and on iOS versions prior to 18.
+   */
+  readonly ACCESSORY_KIT_SUPPORTED: boolean =
+    BleManagerModule?.getConstants?.().ACCESSORY_KIT_SUPPORTED ??
+    BleManagerModule?.ACCESSORY_KIT_SUPPORTED ??
+    false;
+
+  /**
+   * [iOS only, 18+]
+   *
+   * Retrieve the accessories already paired with the app through AccessoryKit.
+   *
+   * Rejects with `NOT_SUPPORTED` on Android and on iOS versions prior to 18.
+   */
+  getPairedAccessories(): Promise<IOSAccessory[]> {
+    return BleManagerModule.getPairedAccessories();
+  }
+
+  /**
+   * [iOS only, 18+]
+   *
+   * Present the AccessoryKit picker to discover and pair accessories.
+   *
+   * Resolves with the list of accessories selected by the user. Rejects with
+   * `NOT_SUPPORTED` on Android and on iOS versions prior to 18, or with a setup
+   * error code when the required `Info.plist` entries are missing.
+   *
+   * @param displayItems Accessories the picker is allowed to surface. Each
+   * `name`/`serviceUUID` must be present in the app's `NSAccessorySetupBluetoothNames`
+   * and `NSAccessorySetupBluetoothServices` plist entries respectively, and
+   * `productImage` must match an image asset bundled in the app.
+   */
+  accessoriesScan(displayItems: IOSAccessoryDisplayItem[]): Promise<IOSAccessory[]> {
+    return BleManagerModule.accessoriesScan(displayItems);
+  }
+
+  /**
+   * [iOS only, 18+]
+   *
+   * Stop an in-progress AccessoryKit session. Safe to call when no session is active.
+   */
+  stopAccessoriesScan(): void {
+    return BleManagerModule.stopAccessoriesScan();
+  }
+
+  /**
+   * [iOS only, 18+]
+   *
+   * Remove (forget) a paired accessory, deleting its BLE bond.
+   *
+   * Rejects with `NOT_SUPPORTED` on Android and on iOS versions prior to 18, or
+   * with `ACCESSORY_NOT_FOUND` when no paired accessory matches the id.
+   *
+   * @param id The accessory id, as returned by `accessoriesScan` / `getPairedAccessories`.
+   */
+  removeAccessory(id: string): Promise<void> {
+    return BleManagerModule.removeAccessory(id);
+  }
+
+  /**
+   * [iOS only, 18+]
+   *
+   * Present the system sheet to rename a paired accessory.
+   *
+   * Rejects with `NOT_SUPPORTED` on Android and on iOS versions prior to 18, or
+   * with `ACCESSORY_NOT_FOUND` when no paired accessory matches the id.
+   *
+   * @param id The accessory id, as returned by `accessoriesScan` / `getPairedAccessories`.
+   */
+  renameAccessory(id: string): Promise<void> {
+    return BleManagerModule.renameAccessory(id);
+  }
+
+  /**
+   * [iOS only, 18+]
+   *
+   * The AccessoryKit picker was presented and a scan started.
+   */
+  onStartScanAccessories(callback: EventCallback<EventStartScanAccessories>): EventSubscription {
+    return BleManagerModule.onStartScanAccessories(callback);
+  }
+
+  /**
+   * [iOS only, 18+]
+   *
+   * The AccessoryKit session was invalidated and the scan stopped.
+   */
+  onStopScanAccessories(callback: EventCallback<EventStopScanAccessories>): EventSubscription {
+    return BleManagerModule.onStopScanAccessories(callback);
+  }
+
+  /**
+   * [iOS only, 18+]
+   *
+   * The set of accessories tracked by the current AccessoryKit session changed.
+   */
+  onAccessoriesChanged(callback: EventCallback<EventAccessoriesChanged>): EventSubscription {
+    return BleManagerModule.onAccessoriesChanged(callback);
+  }
+
+  /**
+   * [iOS only, 18+]
+   *
+   * The AccessoryKit session emitted a state update. `state` is the raw
+   * `ASAccessoryEvent.EventType` value.
+   */
+  onAccessorySessionUpdateState(callback: EventCallback<EventAccessorySessionUpdateState>): EventSubscription {
+    return BleManagerModule.onAccessorySessionUpdateState(callback);
   }
 }
 

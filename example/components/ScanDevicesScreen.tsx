@@ -22,6 +22,9 @@ import BleManager, {
   BleScanCallbackType,
   BleScanMatchMode,
   BleScanMode,
+  EventAccessoriesChanged,
+  EventAccessorySessionUpdateState,
+  IOSAccessory,
   Peripheral,
   PeripheralInfo,
 } from 'react-native-ble-manager';
@@ -106,6 +109,27 @@ const ScanDevicesScreen = () => {
     }
   };
 
+  const startAccessoryScan = async () => {
+    try {
+      if (!BleManager.ACCESSORY_KIT_SUPPORTED) {
+        console.error('[startAccessoryScan] AccessoryKit not supported in your device.');
+        return;
+      }
+      const pairedAccessories = await BleManager.getPairedAccessories();
+      console.debug('[startAccessoryScan] paired accessories', pairedAccessories);
+      const accessories = await BleManager.accessoriesScan([
+        {
+          name: 'Polar',
+          productImage: 'heart.fill',
+          serviceUUID: '0000180D-0000-1000-8000-00805F9B34FB',
+        },
+      ]);
+      console.debug('[startAccessoryScan] found accessories', accessories);
+    } catch (error) {
+      console.error('[startAccessoryScan] thrown', error);
+    }
+  };
+
   const enableBluetooth = async () => {
     try {
       console.debug('[enableBluetooth]');
@@ -118,6 +142,29 @@ const ScanDevicesScreen = () => {
   const handleStopScan = () => {
     setIsScanning(false);
     console.debug('[handleStopScan] scan is stopped.');
+  };
+
+  const handleAccessorySessionUpdateState = (
+    event: EventAccessorySessionUpdateState
+  ) => {
+    console.debug(
+      `[handleAccessorySessionUpdateState] state=${event.state}`
+    );
+  };
+
+  const handleAccessoriesChanged = (event: EventAccessoriesChanged) => {
+    console.debug(
+      '[handleAccessoriesChanged] accessories changed',
+      event.accessories as IOSAccessory[]
+    );
+  };
+
+  const handleStartScanAccessories = () => {
+    console.debug('[handleStartScanAccessories] accessory scan started');
+  };
+
+  const handleStopScanAccessories = () => {
+    console.debug('[handleStopScanAccessories] accessory scan stopped');
   };
 
   const handleDisconnectedPeripheral = (
@@ -418,6 +465,12 @@ const ScanDevicesScreen = () => {
         handleUpdateValueForCharacteristic
       ),
       BleManager.onDisconnectPeripheral(handleDisconnectedPeripheral),
+      BleManager.onAccessorySessionUpdateState(
+        handleAccessorySessionUpdateState
+      ),
+      BleManager.onAccessoriesChanged(handleAccessoriesChanged),
+      BleManager.onStartScanAccessories(handleStartScanAccessories),
+      BleManager.onStopScanAccessories(handleStopScanAccessories),
     ];
 
     handleAndroidPermissions();
@@ -552,6 +605,14 @@ const ScanDevicesScreen = () => {
               </Pressable>
             </View>
           </>
+        )}
+
+        {Platform.OS === 'ios' && (
+          <View style={styles.buttonGroup}>
+            <Pressable style={styles.scanButton} onPress={startAccessoryScan}>
+              <Text style={styles.scanButtonText}>Scan Accessory</Text>
+            </Pressable>
+          </View>
         )}
 
         {Array.from(peripherals.values()).length === 0 && (

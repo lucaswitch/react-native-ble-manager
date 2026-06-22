@@ -26,6 +26,7 @@ import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.BaseActivityEventListener;
 import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableArray;
@@ -34,6 +35,7 @@ import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -1055,6 +1057,37 @@ public class BleManager extends NativeBleManagerSpec {
     @ReactMethod
     public void removeListeners(double count) {
         // Keep: Required for RN built in Event Emitter Calls.
+    }
+
+    @Override
+    protected Map<String, Object> getTypedExportedConstants() {
+        final Map<String, Object> constants = new HashMap<>();
+        constants.put("ACCESSORY_KIT_SUPPORTED", false);
+        return constants;
+    }
+
+    @ReactMethod
+    public void getPairedAccessories(Promise promise) {
+        promise.reject("NOT_SUPPORTED", "requires iOS 18.0 or newer.");
+    }
+
+    @ReactMethod
+    public void accessoriesScan(ReadableArray displayItems, Promise promise) {
+        promise.reject("NOT_SUPPORTED", "requires iOS 18.0 or newer.");
+    }
+
+    @ReactMethod
+    public void stopAccessoriesScan() {
+    }
+
+    @ReactMethod
+    public void removeAccessory(String id, Promise promise) {
+        promise.reject("NOT_SUPPORTED", "requires iOS 18.0 or newer.");
+    }
+
+    @ReactMethod
+    public void renameAccessory(String id, Promise promise) {
+        promise.reject("NOT_SUPPORTED", "requires iOS 18.0 or newer.");
     }
 
     @Override
